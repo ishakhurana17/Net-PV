@@ -1,0 +1,119 @@
+---
+title: "FINC 780 Project A1"
+output: html_document
+---
+## **Isha Khurana**
+
+### Function that calculates Present Value (PV) of Cash Flows, Net Present Value (NPV), Profitability Index (PI), Payback Period (PBP). 
+
+
+### Code
+
+```{r}
+library(scales)
+
+#' Format a number by rounding off to "k" decimal places
+#'
+#' @param x  a number
+#' @param k  number of decimal places
+#' @return   formatted string
+exactDecimalPlaces <- function(x, k) trimws(format(round(x, k), nsmall=k))
+
+#' Convert a number to dollar currency
+#'
+#' @param value  a number
+#' @return       formatted dollar currency
+convertToDollar <- function(value)
+  (dollar_format(accuracy = NULL, scale = 1, prefix = "$", 
+                 suffix = "", format(0, nsmall = 2L), big.mark = ",", 
+                 decimal.mark = ".", trim = TRUE, largest_with_cents = 1e+20, 
+                 negative_parens = FALSE)(value))
+
+#' Check validity of cash flow, year and rate
+#'
+#' @param cf     cash flow vector
+#' @param year   year vector
+#' @param rate   rate
+#' @return       void
+checkValidity <- function(cf, year, rate) {
+  if(!(is.numeric(cf) & is.numeric(year) & is.numeric(rate))) {
+    stop("All inputs need to be of type numeric")
+  }
+  if(length(cf) != length(year)) {
+    stop("Cash flow and year must be of same length")
+  }
+  if(rate < 0) {
+    stop("Rate cannot be negative")
+  }
+  if(any(year < 0)) {
+    stop("Year cannot be negative")
+  }
+  if(any(diff(year) < 0)) {
+    stop("Year must be in increasing order")
+  }
+}
+
+#' A function to calculate PV of cash flows and generate results
+#'
+#' @param cf cash flow vector
+#' @param y  year vector
+#' @param r  rate
+#' @return   list of results
+myNPV <- function(cf, y, r) {
+  if (missing(r)) {
+    message("Year not provided, taking default value for it")
+    rate <- y
+    year <- (0:(length(cf)-1))
+  } else {
+    rate <- r
+    year <- y
+  }
+  
+  # Number of digits after decimal point
+  DIGIT_PRECISION <- 2
+  
+  # Check validity of inputs
+  checkValidity(cf, year, rate)
+  
+  # Calculate PV
+  PV <- cf/((1+rate)^year)
+  
+  Output <- data.frame("Year" = year, "Cash Flows" = convertToDollar(cf), "PV of Cash Flows" = convertToDollar(PV))
+  
+  index <- match(FALSE, cumsum(PV) < 0)
+  
+  # Calculate Payback Period
+  payback <- year[index-1] + abs(cumsum(PV)[index-1])/PV[index]
+  pbp <- exactDecimalPlaces(payback, DIGIT_PRECISION)
+  
+  # Calculate Profitability Index
+  pi <- exactDecimalPlaces(-sum(PV)/cf[1], DIGIT_PRECISION)
+  
+  # Calculate NPV
+  npv <- convertToDollar(sum(PV))
+  
+  answer <- list("Cashflow table" = Output,"Summary" = rbind("NPV" = npv, "PI" = pi, "Payback Period" = pbp))
+  
+  answer
+}
+```
+
+### Inputs
+
+#### Part (a) 
+##### Year not given
+```{r}
+myNPV(c(-10, 2, 4, 5, 9, 6), .12)
+```
+
+#### Part (b)
+##### Year Given
+```{r}
+myNPV(c(-10000, 4000, 9000, 2000), c(1, 3, 5, 7), .12)
+```
+
+#### Part (c)
+##### Taking any value as "character"
+```{r error=TRUE}
+myNPV(c(-10000, 4000, 9000, 2000), c(1, "z", 5, 7) ,.12)
+```
